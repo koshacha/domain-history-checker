@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html ng-app>
+   <head>
+      <meta charset="utf-8">
+      <title>Поиск редиректов на WebArchive</title>
+      <link rel="stylesheet" href="../../node_modules/bootstrap/dist/css/bootstrap.min.css">
+      <link href="./css/style.css" rel="stylesheet">
+   </head>
+   <body class="text-center">
+      <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
+         <header class="masthead mb-auto text-right">
+            <a class="btn btn-outline-primary" href="#">Настройки</a>
+         </header>
+         <main role="main" class="inner cover">
+            <h1 class="cover-heading">Поиск редиректов</h1>
+            <p class="lead">Введите список сайтов в форму ниже, каждый новый домен с новой строки.</p>
+            <form>
+               <div class="form-group">
+                  <textarea class="form-control" id="domain-list" rows="10" placeholder="Список доменов"></textarea>
+               </div>
+               <div class="form-group">
+                  <button class="btn btn-primary" type="submit" style="margin-top: 30px;">Начать обработку</button>
+               </div>
+            </form>
+         </main>
+         <footer class="mastfoot mt-auto">
+            <div class="inner">
+               <p><a href="https://tlenkie.ru/">@tlenkie</a>, 2020</p>
+            </div>
+         </footer>
+      </div>
+      <script>
+         require('angular');
+         window.$ = window.jQuery = require('jquery');
+         require('bootstrap');
+         require("./js/main.js");
+      </script>
+      <div class="modal fade" id="processModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true" data-keyboard="false" data-backdrop="static">
+         <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+               <div class="modal-header">
+                  <h5 class="modal-title" id="exampleModalLabel">Идёт процесс</h5>
+               </div>
+               <div class="modal-body">
+                  <div class="progress">
+                     <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%"></div>
+                  </div>
+               </div>
+               <div class="modal-footer">
+                  <button type="button" class="btn btn-primary" data-dismiss="modal">Отмена</button>
+               </div>
+            </div>
+         </div>
+      </div>
+   </body>
+</html>
