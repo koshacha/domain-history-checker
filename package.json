@@ -43,12 +43,21 @@
   },
   "dependencies": {
     "angular": "^1.8.0",
+    "axios": "^0.19.2",
     "bootstrap": "^4.5.0",
     "custom-electron-titlebar": "^3.2.2-hotfix62",
-    "electron-settings": "^4.0.2",
+    "electron-preferences": "^2.0.0",
     "electron-squirrel-startup": "^1.0.0",
+    "free-proxy": "^0.1.6",
+    "hide-my-name-vpn": "^1.0.1",
     "jquery": "^3.5.1",
     "popper.js": "^1.16.1",
+    "proxy-lists": "^1.23.0",
+    "request": "^2.88.2",
+    "socks-proxy-agent": "^5.0.0",
+    "socks5-http-client": "^1.0.4",
+    "socks5-https-client": "^1.2.1",
+    "socksified": "0.0.2",
     "wayback-downloader": "^1.0.0"
   },
   "devDependencies": {

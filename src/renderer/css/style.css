@@ -120,7 +120,7 @@ body {
   color: rgba(255, 255, 255, .5);
 }
 
-.form-control {
+textarea.form-control {
     border: unset;
     border-radius: 0;
     color: #bbb;
@@ -134,7 +134,7 @@ body {
     padding-top: 0;
 }
 
-.form-control:focus {
+textarea.form-control:focus {
     background-image: url(../img/bg.png);
     background-attachment: local;
     border: unset;
@@ -201,4 +201,33 @@ body {
 .modal.modal-static .modal-dialog {
   transform: none;
   -webkit-transform: none;
+}
+
+input.form-control {
+  background: #333;
+  border: unset;
+  color: #bbb;
+  border-radius: 0px;
+}
+
+input.form-control:focus {
+  background: #444;
+  border: unset;
+  border-radius: 0px;
+  outline: none;
+  color: #ccc;
+  box-shadow: none;
+}
+
+.list {
+  margin-bottom: 15px;
+}
+
+.list-group {
+  max-height: 148px;
+  overflow-y: auto;
+}
+
+.list-group-item {
+  background: #323232;
 }
