@@ -1,52 +1,26 @@
-'use strict';
+'use strict'
 
 class Main {
     constructor(arg) {
+        // Флаги-статусы результата
+        this.NO_REDIRECTS = 0;
+        this.HAS_INNER_REDIRECT = 1;
+        this.HAS_EXTERNAL_REDIRECT = 2;
+
+        this.strings = [
+            'Редиректы не найдены',
+            'Найдены внутренние редиректы',
+            'Найдены внешние редиректы'
+        ];
+
         // Массив доменов для обработки
         this.domains = [];
-        this.domains_count = 1;
-        
+        this.domainsCount = 0;
+
         // Используемые NodeJS библиотеки
         this.lib = {};
-        this.lib.Agent = require('socks5-https-client/lib/Agent');
-        // this.lib.url = require('url');
-        // this.lib.https = require('https');
-        // this.lib.SocksProxyAgent = require('socks-proxy-agent');
-        this.lib.fs = require('fs');
-        this.lib.wayback = require('wayback-downloader');
         this.lib.electron = require("electron");
-
-        // Proxy
-
-        this.proxy = {
-            list: [],
-            index: 0,
-            get(k) {
-                if (typeof k === "undefined") {
-                    this.index = ++ this.index % this.list.length;
-                    return 'http://' + this.list[this.index];
-                } else {
-                    return 'http://' + this.list[k];
-                }
-            },
-            toString() {
-                return this.list.join('\n');
-            },
-            fromString(str) {
-                this.list = str.split('\n').filter(el => {
-                    return el && el.length > 9; 
-                });
-            }
-        };
-
-        var fileName = 'proxy.json';
-
-        if (this.lib.fs.existsSync(fileName)) {
-            var file = this.lib.fs.readFileSync(fileName);
-            this.proxy.list = JSON.parse(file);
-        } else {
-            this.lib.fs.writeFileSync(fileName, JSON.stringify(this.proxy.list));
-        }
+        this.lib.excel = require('excel4node');
 
         this.setTitlebar();
     }
@@ -64,129 +38,170 @@ class Main {
 	    MyTitleBar.updateTitle('Поиск редиректов');
     }
 
-    // Установка прогрессбара
-    setProgress () {
-        setInterval(() => {
-            var cur = 0, all = 0;
-            for (var el in this.domains) {
-                cur += this.domains[el]['index'] + 1;
-                all += this.domains[el]['count'];
+    addBadge(domain, res) {
+        var resToColor = function (res) {
+            switch (res) {
+                case 0:
+                    return 'success';
+                case 1:
+                    return 'warning';
+                case 2:
+                    return 'danger';
+                default:
+                    return 'primary';
             }
-            $('.progress-bar').css('width', (cur / (all / 100)) + '%')
-        }, 200);
+        };
+
+        $('<li class="list-group-item d-flex justify-content-between align-items-center">' + domain + '<span class="badge badge-' + resToColor(res) + ' badge-pill">&nbsp;</span></li>').appendTo('#list-of-badges');
     }
 
-    // Проверка прокси, удаление нерабочих
-    checkProxy () {
-        console.log('checkProxy');
+    displayResults() {
+        $('#progress-spinner').hide();
+        $('#processModalLabel').text('Работа завершена');
+        $('#stopProcess').text('Закрыть');
+        $('#exportResults').show();
     }
 
-    // Сохранение прокси в файл
-    saveSettings() {
-        var fileName = 'proxy.json';
-        this.lib.fs.writeFileSync(fileName, JSON.stringify(this.proxy.list));
-    }
+    export() {
+        var _this = this;
+        var dialog = this.lib.electron.remote.dialog,
+        WIN = this.lib.electron.remote.getCurrentWindow();
 
-    // Статус код
-    snapshotCallback (err, res) {
-        if (err) {
-            console.log('Error: [getStatusCode] ', err);
+        var options = {
+            title: "Экспорт результатов",
+            defaultPath : "C:\\export.xlsx",
+            buttonLabel : "Экспорт",
+            filters :[
+                {name: 'Все файлы', extensions: ['*']}
+            ]
         }
-        else if (res.statusCode != 200) {
-            console.log('Error: [getStatusCode], statusCode = ', res.statusCode);
-        }
-        else if(res) {
-            var responce = JSON.parse(res.body);
-            if (responce['archived_snapshots']['closest']['status'] != 200) {
-                console.log(responce);
-            } else {
-                // do nothing
-                console.log(responce);
-                // console.log('NORM: ', responce['archived_snapshots']['closest']['status']);
+
+        var filename = dialog.showSaveDialog(WIN, options, (filename) => {
+            console.log(filename);
+        });
+
+        filename.then(function(argv){
+            var file = argv.filePath;
+
+            var wb = new _this.lib.excel.Workbook();
+            var ws = wb.addWorksheet('Результаты обработки доменов');
+
+            var styles = [];
+            styles[_this.NO_REDIRECTS] = wb.createStyle({
+                fill: {
+                    type: 'pattern',
+                    patternType: 'solid',
+                    bgColor: '#00FF00',
+                    fgColor: '#00FF00',
+                }
+            });
+
+            styles[_this.HAS_INNER_REDIRECT] = wb.createStyle({
+                fill: {
+                    type: 'pattern',
+                    patternType: 'solid',
+                    bgColor: '#FFA500',
+                    fgColor: '#FFA500',
+                }
+            });
+
+            styles[_this.HAS_EXTERNAL_REDIRECT] = wb.createStyle({
+                fill: {
+                    type: 'pattern',
+                    patternType: 'solid',
+                    bgColor: '#FF0000',
+                    fgColor: '#FF0000',
+                }
+            });
+
+            
+
+            ws.cell(1, 1).string('Домен');
+            ws.cell(1, 2).string('Результат запроса');
+
+            var index = 2;
+            for (var i in _this.domains) {
+                ws.cell(index, 1).string(i);
+                ws.cell(index, 2).number(_this.domains[i]).style(styles[_this.domains[i]]);
+                index = index + 1;
             }
-        }
-        else 
-            console.log('Error: [getStatusCode], null');
-    }
+            wb.write(file);
+        });
 
-    execTimestamp (s) {
-        var regex = /\/([0-9]+)\//gm;
-        var t = regex.exec(s);
-        return (t && t[1]) ? t[1] : false;
     }
 
     // Обработка снэпов для домена
-    snapshotsProcessing (mementos, domain) {
-        var mem = mementos.reverse();
-
-        this.domains[domain] = {};
-        this.domains[domain].index = 0;
-        this.domains[domain].count = mem.length;
+    snapshotsProcessing (domain, responce) {
+        var _this = this,
+            th = responce.shift(),
+            indexUrl = th.indexOf('original'),
+            indexStat = th.indexOf('statuscode');
         
-        var _this = this;
+        responce = responce.reverse();
 
-        this.domains[domain].timer = setInterval(() => {
-            if (_this.domains[domain].index < _this.domains[domain].count - 1) {
-                var timestamp = _this.execTimestamp(mem[_this.domains[domain].index].url);
-                var proxySettings = _this.proxy.get();
-
-                request({
-                    url: "http://archive.org/wayback/available?url=" + domain + "&timestamp=" + timestamp,
-                    method: "GET",
-                    // proxy: proxySettings
-                }, _this.snapshotCallback);
-
-                _this.domains[domain].index++;
-            } else {
-                clearInterval(_this.domains[domain].timer);
+        $.each(responce, function (i, el) {
+            if (['301', '302', '307'].includes(el[indexStat])) {
+                var url = new URL(el[indexUrl]).host.replace(/^(www\.)/i, '').replace(/(\.)$/i, '');
+                if (domain != url) {
+                    _this.domains[domain] = _this.HAS_EXTERNAL_REDIRECT;
+                    return;
+                } else {
+                    _this.domains[domain] = _this.HAS_INNER_REDIRECT;
+                }
             }
-        }, 150 * this.domains_count);
+        });
+
+        if (typeof _this.domains[domain] == 'undefined')
+            _this.domains[domain] = _this.NO_REDIRECTS;
+
+        _this.addBadge(domain, _this.domains[domain]);
+        if (_this.domainsCount == Object.keys(_this.domains).length) {
+            _this.displayResults();
+        }
     }
 
     // Запрос снэпов для домена
     getSnapshots (lines) {
         var _this = this;
-        // this.domains_count = lines.length;
-        $.each(lines, function (i, val) {
-            _this.lib.wayback.getTimeMap(val, function(e, d) {
-                e && console.log('Error: [parsingProcess] ', e);
-                e || _this.snapshotsProcessing(d.mementos, d.original);
-            });
+
+        _this.domainsCount = lines.length;
+
+        $.each(lines, function (i, domain) {
+            domain = domain.replace(/^(www.)/i, '');
+            $.getJSON("https://web.archive.org/cdx/search/cdx?url=" + domain + "&output=json",
+                function (responce) {
+                    _this.snapshotsProcessing(domain, responce);
+                }
+            );
         });
     }
 
     clearAll() {
-        for (var k in this.domains) {
-            clearInterval(this.domains[k].timer);
-        }
-        // this.domains = [];
+        this.domains = [];
     }
 }
 
 window.main = new Main();
 
 $(function () {
-    main.checkProxy();
     $('[type="submit"]').click(e => {
         e.preventDefault();
         var lines = $('#domain-list').val().split('\n');
-        main.getSnapshots(lines);
-        main.setProgress();
+        $('#processModalLabel').text('Идет процесс');
+        $('#stopProcess').text('Отмена');
+        $('#progress-spinner').show();
+        $('#exportResults').hide();
         $('#processModal').modal('show');
-    });
-
-    $(document).on('shown.bs.modal', '#settingsModal', e => {
-        $(this).find('#socketAddress').val(main.proxy.toString());
-    });
-
-    $(document).on('click', '#settingsSave', e => {
-        var value = $('#socketAddress').val();
-        main.proxy.fromString(value);
-        main.saveSettings();
+        main.getSnapshots(lines);
     });
 
     $('#stopProcess').on('click', function () {
         main.clearAll();
+        $('#list-of-badges').empty();
+    });
+
+    $('#exportResults').on('click', function(){
+        main.export();
     });
 
     $('body').on('click', '.mastfoot a[href]', e => {
