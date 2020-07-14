@@ -16,6 +16,7 @@ const createWindow = () => {
     frame: false,
     // maxWidth: 600,
     // maxHeight: 800,
+    show: false,
     icon: __dirname + '/renderer/img/icon.ico',
     webPreferences: {
       nodeIntegration: true
@@ -26,6 +27,12 @@ const createWindow = () => {
   mainWindow.loadFile(path.join(__dirname, '/renderer/index.html'));
 
   mainWindow.setMenu(null);
+
+  mainWindow.on('ready-to-show', function() {
+    mainWindow.show();
+    mainWindow.focus();
+  });
+
   // Open the DevTools.
 //   mainWindow.webContents.openDevTools();
 };
