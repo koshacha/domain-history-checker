@@ -132,29 +132,36 @@ class Main {
 
     // Обработка снэпов для домена
     snapshotsProcessing (domain, responce) {
-        var _this = this,
-            th = responce.shift(),
-            indexUrl = th.indexOf('original'),
-            indexStat = th.indexOf('statuscode');
-        
-        responce = responce.reverse();
+        var _this = this;
+        if (responce.length > 0) {
+            var
+                th = responce.shift(),
+                indexUrl = th.indexOf('original'),
+                indexStat = th.indexOf('statuscode');
+            
+            responce = responce.reverse();
 
-        $.each(responce, function (i, el) {
-            if (['301', '302', '307'].includes(el[indexStat])) {
-                var url = new URL(el[indexUrl]).host.replace(/^(www\.)/i, '').replace(/(\.)$/i, '');
-                if (domain != url) {
-                    _this.domains[domain] = _this.HAS_EXTERNAL_REDIRECT;
-                    return;
-                } else {
-                    _this.domains[domain] = _this.HAS_INNER_REDIRECT;
+            $.each(responce, function (i, el) {
+                if (['301', '302', '307'].includes(el[indexStat])) {
+                    var url = new URL(el[indexUrl]).host.replace(/^(www\.)/i, '').replace(/(\.)$/i, '');
+                    if (domain != url) {
+                        _this.domains[domain] = _this.HAS_EXTERNAL_REDIRECT;
+                        return;
+                    } else {
+                        _this.domains[domain] = _this.HAS_INNER_REDIRECT;
+                    }
                 }
-            }
-        });
+            });
 
-        if (typeof _this.domains[domain] == 'undefined')
-            _this.domains[domain] = _this.NO_REDIRECTS;
+            if (typeof _this.domains[domain] == 'undefined')
+                _this.domains[domain] = _this.NO_REDIRECTS;
 
-        _this.addBadge(domain, _this.domains[domain]);
+            _this.addBadge(domain, _this.domains[domain]);
+        } else {
+            delete _this.domains[domain];
+            _this.domainsCount = _this.domainsCount - 1;
+        }
+        
         if (_this.domainsCount == Object.keys(_this.domains).length) {
             _this.displayResults();
         }
@@ -187,12 +194,21 @@ $(function () {
     $('[type="submit"]').click(e => {
         e.preventDefault();
         var lines = $('#domain-list').val().split('\n');
-        $('#processModalLabel').text('Идет процесс');
-        $('#stopProcess').text('Отмена');
-        $('#progress-spinner').show();
-        $('#exportResults').hide();
-        $('#processModal').modal('show');
-        main.getSnapshots(lines);
+        lines = lines.filter(Boolean).filter((e,i,a) => a.indexOf(e) == i).filter((e) => e.includes('.'));
+        if (lines.length > 190 || lines.length < 1) {
+            $('#domain-list').addClass('error');
+            setTimeout(function() {
+                $('#domain-list').removeClass('error');
+            }, 2500)
+            return;
+        } else {
+            $('#processModalLabel').text('Идет процесс');
+            $('#stopProcess').text('Отмена');
+            $('#progress-spinner').show();
+            $('#exportResults').hide();
+            $('#processModal').modal('show');
+            main.getSnapshots(lines);
+        }
     });
 
     $('#stopProcess').on('click', function () {

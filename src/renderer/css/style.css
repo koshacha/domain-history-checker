@@ -231,3 +231,5 @@ input.form-control:focus {
 .list-group-item {
   background: #323232;
 }
+
+textarea.form-control.error {box-shadow: 0 19px 38px rgba(0,0,0,0.30), 0 15px 12px rgba(0,0,0,0.22),0 0 0 0.2rem rgba(220,53,69,.5);}
