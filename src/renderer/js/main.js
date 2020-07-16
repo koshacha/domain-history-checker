@@ -16,6 +16,7 @@ class Main {
         // Массив доменов для обработки
         this.domains = [];
         this.domainsCount = 0;
+        this.complete = [];
 
         // Используемые NodeJS библиотеки
         this.lib = {};
@@ -130,54 +131,68 @@ class Main {
 
     }
 
-    // Обработка снэпов для домена
-    snapshotsProcessing (domain, responce) {
-        var _this = this;
-        if (responce.length > 0) {
-            var
-                th = responce.shift(),
-                indexUrl = th.indexOf('original'),
-                indexStat = th.indexOf('statuscode');
-            
-            responce = responce.reverse();
-
-            $.each(responce, function (i, el) {
-                if (['301', '302', '307'].includes(el[indexStat])) {
-                    var url = new URL(el[indexUrl]).host.replace(/^(www\.)/i, '').replace(/(\.)$/i, '');
-                    if (domain != url) {
-                        _this.domains[domain] = _this.HAS_EXTERNAL_REDIRECT;
-                        return;
-                    } else {
-                        _this.domains[domain] = _this.HAS_INNER_REDIRECT;
-                    }
-                }
-            });
-
-            if (typeof _this.domains[domain] == 'undefined')
-                _this.domains[domain] = _this.NO_REDIRECTS;
-
-            _this.addBadge(domain, _this.domains[domain]);
-        } else {
-            delete _this.domains[domain];
-            _this.domainsCount = _this.domainsCount - 1;
-        }
-        
-        if (_this.domainsCount == Object.keys(_this.domains).length) {
-            _this.displayResults();
-        }
-    }
-
     // Запрос снэпов для домена
     getSnapshots (lines) {
         var _this = this;
-
         _this.domainsCount = lines.length;
 
         $.each(lines, function (i, domain) {
-            domain = domain.replace(/^(www.)/i, '');
-            $.getJSON("https://web.archive.org/cdx/search/cdx?url=" + domain + "&output=json",
+            domain = domain.replace(/^(www.)/i, '').replace(' ', '');
+
+            $.getJSON("https://web.archive.org/cdx/search/cdx?url=" + domain + "&filter=statuscode:30.&output=json&fl=timestamp,original,digest",
                 function (responce) {
-                    _this.snapshotsProcessing(domain, responce);
+                    if (responce.length > 0) {
+                        responce.shift();
+                        responce = responce.reverse();
+
+                        var temp = [], tResp = [];
+                        $.each(responce, function (i, e) { 
+                            if (!temp.includes(e[2])) {
+                                tResp.push(e);
+                                temp.push(e[2]);
+                             }
+                        });
+                        
+                        responce = tResp;
+
+                        _this.domains[domain] = [];
+
+                        $.each(responce, function (i, el) {
+                            var jqXHR = $.post("http://web.archive.org/web/" + el[0] + "/" + el[1] + "/");
+                            
+                            jqXHR.done(function() {
+                                var finishUrl = jqXHR.getResponseHeader('X-Cache-Key').replace(/https?:\/\//, '').replace(/\/RU$/, '-EOS').split('/')[3];
+                                console.log(finishUrl, domain);
+                                if (finishUrl.includes(domain + '-EOS'))
+                                    _this.domains[domain].push(_this.NO_REDIRECTS);
+                                else
+                                    _this.domains[domain].push(finishUrl.includes(domain) ? _this.HAS_INNER_REDIRECT : _this.HAS_EXTERNAL_REDIRECT);
+                            });
+
+                            jqXHR.fail(function() {
+                                // Nothing
+                                _this.domains[domain].push(1);
+                                console.log('404 Error');
+                            });
+
+                            jqXHR.always(function() {
+                                if (_this.domains[domain].length == responce.length) {
+                                    _this.domains[domain] = Math.max(..._this.domains[domain]);
+                                    _this.complete.push(domain);
+                                    _this.addBadge(domain, _this.domains[domain]);
+                                    
+                                    if (_this.domainsCount == _this.complete.length)
+                                        _this.displayResults();
+                                }
+                            });
+                        });
+                    } else {
+                        _this.domains[domain] = _this.NO_REDIRECTS;
+                        _this.complete.push(domain);
+                        _this.addBadge(domain, _this.domains[domain]);
+                        if (_this.domainsCount == _this.complete.length)
+                            _this.displayResults();
+                    }
                 }
             );
         });
@@ -185,6 +200,7 @@ class Main {
 
     clearAll() {
         this.domains = [];
+        this.complete = [];
     }
 }
 
@@ -194,8 +210,8 @@ $(function () {
     $('[type="submit"]').click(e => {
         e.preventDefault();
         var lines = $('#domain-list').val().split('\n');
-        lines = lines.filter(Boolean).filter((e,i,a) => a.indexOf(e) == i).filter((e) => e.includes('.'));
-        if (lines.length > 190 || lines.length < 1) {
+        lines = lines.filter(Boolean).filter((e,i,a) => a.indexOf(e) == i).filter((e) => e.includes('.')).map((e) => e.replace(/https?:\/\//, '').replace(/\/*$/, ''));
+        if (lines.length > 100 || lines.length < 1) {
             $('#domain-list').addClass('error');
             setTimeout(function() {
                 $('#domain-list').removeClass('error');
